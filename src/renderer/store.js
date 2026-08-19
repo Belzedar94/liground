@@ -12,6 +12,7 @@ import {
   legalGates as spellLegalGates
 } from './spell'
 import { engine, Engine } from './engine'
+import { clearSettings, installAutoSave, loadSettings, saveSettings } from './settings'
 import allEngines from './store/engines'
 
 import moveAudio from './assets/audio/Move.mp3'
@@ -728,16 +729,7 @@ export const store = new Vuex.Store({
       clearInterval(state.clock)
     },
     saveSettings (state) {
-      localStorage.darkMode = state.darkMode
-      localStorage.muteButton = state.muteButton
-      localStorage.evalPlotDepth = state.evalPlotDepth
-      localStorage.variant = state.variant
-      localStorage.resized = state.resized
-      localStorage.resized9x9width = state.resized9x9width
-      localStorage.resized9x9height = state.resized9x9height
-      localStorage.resized9x10width = state.resized9x10width
-      localStorage.resized9x10height = state.resized9x10height
-      localStorage.dimNumber = state.dimNumber
+      saveSettings(state)
     },
 
     // mutation to reset settings back to defaults
@@ -841,18 +833,12 @@ export const store = new Vuex.Store({
       context.dispatch('restartEngine')
     },
     initialize (context) {
-      if (localStorage.evalPlotDepth) {
-        context.state.evalPlotDepth = localStorage.evalPlotDepth
-      }
-      if (localStorage.darkMode) {
-        if (localStorage.darkMode === 'true') {
-          context.commit('switchDarkMode')
-        }
-      }
-      if (localStorage.muteButton) {
-        if (localStorage.muteButton === 'true') {
-          context.commit('switchMuteButton')
-        }
+      // Everything in the descriptor list comes back typed, including the board
+      // size keys the old code wrote but never read.
+      const saved = loadSettings()
+      for (const [key, value] of Object.entries(saved)) {
+        if (key === 'variant') continue
+        context.state[key] = value
       }
       if (localStorage.internationalPieceStyle) {
         context.commit('pieceStyle', localStorage.internationalPieceStyle)
@@ -860,8 +846,10 @@ export const store = new Vuex.Store({
       if (localStorage.internationalBoardStyle) {
         context.commit('boardStyle', localStorage.internationalBoardStyle)
       }
-      if (localStorage.variant) {
-        context.commit('variant', localStorage.variant)
+      // The variant needs the mutation before the board is built; the engine
+      // side of it is settled by changeEngine below.
+      if (saved.variant && context.getters.variantOptions.revGet(saved.variant)) {
+        context.commit('variant', saved.variant)
       }
       if (localStorage.engines) {
         try {
@@ -1879,6 +1867,11 @@ export const store = new Vuex.Store({
         }
       } catch (e) {}
 
+      // drop the persisted UI preferences; the defaults are written back below
+      try {
+        clearSettings()
+      } catch (e) {}
+
       // clear piece/board style choices saved per-variant
       try {
         const styleKeys = [
@@ -2324,6 +2317,10 @@ export const store = new Vuex.Store({
     }
   }
 })
+
+// Persist on change rather than on demand: this is what makes a setting the user
+// touched still be there at the next start.
+installAutoSave(store)
 
 ffish.onRuntimeInitialized = () => {
   store.dispatch('initialize')
