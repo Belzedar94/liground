@@ -72,7 +72,7 @@
     <g
       v-for="shape in shapes"
       :key="shape.key"
-      :class="['zone', 'zone--' + shape.kind, { 'zone--preview': shape.preview }]"
+      :class="['zone', 'zone--' + shape.kind, shape.mode ? 'zone--' + shape.mode : '']"
     >
       <template v-if="shape.kind === 'freeze'">
         <rect
@@ -163,6 +163,15 @@ export default {
     targets: {
       type: Array,
       default: () => []
+    },
+    /**
+     * A cast whose target is already chosen but whose move has not been played.
+     * It has to stay on the board: this is the state where the player is picking
+     * a move under a zone that does not exist yet.
+     */
+    pending: {
+      type: Object,
+      default: null
     }
   },
   data () {
@@ -176,9 +185,12 @@ export default {
       return this.picking && this.targets.length > 0 && this.targets.length < 64
     },
     shapes () {
-      const out = this.zones.map(zone => this.shapeFor(zone.spell, zone.gate, false))
+      const out = this.zones.map(zone => this.shapeFor(zone.spell, zone.gate, ''))
+      if (this.pending) {
+        out.push(this.shapeFor(this.pending.spell, this.pending.gate, 'pending'))
+      }
       if (this.picking && this.hover >= 0 && this.targets.indexOf(this.hover) >= 0) {
-        out.push(this.shapeFor(this.armed, this.hover, true))
+        out.push(this.shapeFor(this.armed, this.hover, 'preview'))
       }
       return out
     }
@@ -199,11 +211,11 @@ export default {
     cx (index) { return this.ox(index) + SQ / 2 },
     cy (index) { return this.oy(index) + SQ / 2 },
 
-    shapeFor (spell, gate, preview) {
+    shapeFor (spell, gate, mode) {
       const gx = this.cx(gate)
       const gy = this.cy(gate)
       if (spell !== SPELL_FREEZE) {
-        return { key: `j${gate}${preview ? 'p' : ''}`, kind: 'jump', gx, gy, preview }
+        return { key: `j${gate}${mode}`, kind: 'jump', gx, gy, mode }
       }
       // The clipped 3x3 is always a rectangle, so one rect draws the whole zone
       // and the outline stays a single unbroken edge.
@@ -213,7 +225,7 @@ export default {
       const x = Math.min(...xs)
       const y = Math.min(...ys)
       return {
-        key: `f${gate}${preview ? 'p' : ''}`,
+        key: `f${gate}${mode}`,
         kind: 'freeze',
         x,
         y,
@@ -221,7 +233,7 @@ export default {
         h: Math.max(...ys) + SQ - y,
         gx,
         gy,
-        preview
+        mode
       }
     },
 
@@ -306,6 +318,17 @@ export default {
   opacity: 0.75;
 }
 
+/* Chosen but not yet cast: solid like a live zone, breathing so it still reads
+   as something the player is holding rather than something already on the board. */
+.zone--pending {
+  animation: spell-zone-in 180ms ease-out both, spell-zone-pulse 1.8s ease-in-out 180ms infinite;
+}
+
+@keyframes spell-zone-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.62; }
+}
+
 @keyframes spell-zone-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -387,7 +410,8 @@ export default {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .zone { animation: none; }
+  .zone,
+  .zone--pending { animation: none; }
   .portal-arc { animation: none; }
 }
 </style>

@@ -53,6 +53,7 @@
             :orientation="orientation"
             :armed="armedSpell"
             :targets="spellGateTargets"
+            :pending="castInHand"
             @pick="pickGate"
             @cancel="cancelCast"
           />

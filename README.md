@@ -37,7 +37,33 @@ The current _LiGround_ release and all its previous versions can also be found a
 - [Horde](https://en.wikipedia.org/wiki/Dunsany%27s_Chess#Horde_Chess)
 - [King of the Hill](https://en.wikipedia.org/wiki/King_of_the_Hill_(chess))
 - [Racing Kings](https://en.wikipedia.org/wiki/V._R._Parton#Racing_Kings)
+- [Spell Chess](#spell-chess)
 - [Three-check](https://en.wikipedia.org/wiki/Three-check_chess)
+
+#### Spell Chess
+
+Chess with two consumable potions per side, cast as part of a move:
+
+- **Freeze** — the 3x3 area around the target square is frozen. Pieces inside
+  cannot move and do not attack, *including your own*, so the board greys out
+  the pieces your cast is about to lock before you commit to it.
+- **Jump** — the target square, which must be occupied, becomes transparent.
+  Sliders of both colours see through it, so a cast can open a line for your
+  opponent as easily as for you.
+
+A zone lives for your move and the single reply to it, then dies; casting starts
+a three-turn cooldown shown as pips beside the hand.
+
+To cast, click a potion, click a target square, then play your move — the two
+steps are separate because the cast resolves before the move does. Esc cancels.
+
+Rules are provided by `src/renderer/spell`, not by ffish, since ffish has no
+spell-chess. `npm run test:spell -- --engine <path to Spell-Stockfish>` checks
+that implementation against the engine binary move for move.
+
+Analysis needs [Spell-Stockfish](https://github.com/Belzedar94/Spell-Stockfish/releases),
+which is not bundled: drop a build into `engines/` as `spell-stockfish`, or add
+it through *Settings → Engine → +*.
 
 ## Build Instructions
 
