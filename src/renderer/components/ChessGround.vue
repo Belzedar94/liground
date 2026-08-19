@@ -1,6 +1,15 @@
 <template>
   <div class="blue merida is2d">
     <div class="grid-parent">
+      <SpellHands
+        v-if="isSpellChess"
+        class="spell-hands-panel"
+        :position="spellPosition"
+        :orientation="orientation"
+        :armed="armedSpell"
+        :interactive="canCast"
+        @arm="armCast"
+      />
       <div
         v-if="variant==='crazyhouse'|| variant==='shogi' "
         ref="pockets"
@@ -38,6 +47,36 @@
             @mouseout="hideShade"
           />
           <div ref="board" />
+          <SpellOverlay
+            v-if="isSpellChess"
+            :zones="spellZones"
+            :orientation="orientation"
+            :armed="armedSpell"
+            :targets="spellGateTargets"
+            @pick="pickGate"
+            @cancel="cancelCast"
+          />
+          <Transition name="cast-hint">
+            <div
+              v-if="castHint"
+              class="cast-hint"
+              :class="'cast-hint--' + castHint.key"
+            >
+              <SpellPotionIcon
+                :spell="castHint.spell"
+                :size="18"
+              />
+              <span class="cast-hint__text">{{ castHint.text }}</span>
+              <button
+                type="button"
+                class="cast-hint__cancel"
+                title="Cancel this cast (Esc)"
+                @click="cancelCast"
+              >
+                Esc
+              </button>
+            </div>
+          </Transition>
           <div
             v-if="isPromotionModalVisible"
             id="PromotionModal"
@@ -58,6 +97,10 @@
 <script>
 import { mapGetters } from 'vuex'
 import { Chessground } from 'chessgroundx'
+import SpellHands from './SpellHands'
+import SpellOverlay from './SpellOverlay'
+import SpellPotionIcon from './SpellPotionIcon'
+import { SPELL_INFO, formatMove, squareName } from '../spell/rules'
 import * as cgUtil from 'chessgroundx/util'
 import ChessPocket from './ChessPocket'
 import PromotionModal from './PromotionModal.vue'
@@ -68,7 +111,7 @@ const BLACK = false
 export default {
   name: 'ChessGround',
   components: {
-    ChessPocket, PromotionModal
+    ChessPocket, PromotionModal, SpellHands, SpellOverlay, SpellPotionIcon
   },
   props: {
     free: {
@@ -197,6 +240,59 @@ export default {
     },
     legalMoves () {
       return this.$store.getters.legalMoves.split(' ')
+    },
+    isSpellChess () {
+      return this.$store.getters.isSpellChess
+    },
+    spellPosition () {
+      return this.$store.getters.spellState
+    },
+    spellZones () {
+      return this.$store.getters.spellZones
+    },
+    spellGateTargets () {
+      return this.$store.getters.spellGateTargets
+    },
+    armedSpell () {
+      const cast = this.$store.getters.pendingCast
+      return cast && cast.gate < 0 ? cast.spell : ''
+    },
+    /** A potion is chosen and aimed; the board is now waiting for the move. */
+    castInHand () {
+      const cast = this.$store.getters.pendingCast
+      return cast && cast.gate >= 0 ? cast : null
+    },
+    canCast () {
+      return this.isSpellChess && (this.fen === this.lastFen || this.analysisMode) && this.isPlayerTurn
+    },
+    /**
+     * chessground only understands the piece placement field, and the Spell FEN
+     * carries hands and zone state after it. Hand it just the board.
+     */
+    boardFen () {
+      if (!this.isSpellChess) return this.fen
+      return String(this.fen).split(/[[\s]/)[0]
+    },
+    /**
+     * The line of guidance shown over the board while a cast is being composed.
+     * It has to say which of the two steps the player is on, because the board
+     * behaves differently in each: first it takes a target, then it takes a move.
+     */
+    castHint () {
+      const cast = this.$store.getters.pendingCast
+      if (!cast) return null
+      const info = SPELL_INFO[cast.spell]
+      return {
+        spell: cast.spell,
+        key: info.key,
+        text: cast.gate < 0
+          ? `Choose a square to ${info.name.toLowerCase()}`
+          : `${info.name} on ${squareName(cast.gate)} — now play your move`
+      }
+    },
+    /** Base moves the player may actually play, given any potion in hand. */
+    playableMoves () {
+      return this.isSpellChess ? this.$store.getters.spellBaseMoves : this.legalMoves
     },
     promotionPosition () {
       if (this.promotionMove) {
@@ -362,7 +458,7 @@ export default {
       if (this.board.state.geometry !== this.dimensionNumber) {
         this.board = Chessground(this.$refs.board, {
           coordinates: true,
-          fen: this.fen,
+          fen: this.boardFen,
           turnColor: 'white',
           resizable: true,
           highlight: {
@@ -389,7 +485,9 @@ export default {
         document.body.dispatchEvent(new Event('chessground.resize'))
       }
       this.board.set({
-        variant: this.variant,
+        // chessgroundx has no spell-chess: the pieces and geometry are standard
+        // chess, and everything spell-specific is drawn by SpellOverlay on top.
+        variant: this.isSpellChess ? 'chess' : this.variant,
         lastMove: false
       })
       this.updateBoard()
@@ -408,6 +506,7 @@ export default {
       this.enlarged9x10width = Number(localStorage.resized9x10width)
       this.enlarged9x10height = Number(localStorage.resized9x10height)
     }
+    window.addEventListener('keydown', this.onKeydown)
     window.addEventListener('mouseup', this.stopDragging)
     window.addEventListener('mousemove', this.doResize)
     window.addEventListener('wheel', this.reRender)
@@ -415,7 +514,7 @@ export default {
 
     this.board = Chessground(this.$refs.board, {
       coordinates: true,
-      fen: this.fen,
+      fen: this.boardFen,
       turnColor: 'white',
       resizable: true,
       highlight: {
@@ -462,6 +561,9 @@ export default {
       this.startingPoint = this.enlarged
     }
     document.body.dispatchEvent(new Event('chessground.resize'))
+  },
+  beforeDestroy () {
+    window.removeEventListener('keydown', this.onKeydown)
   },
   methods: {
     closeCursorHand () {
@@ -711,10 +813,11 @@ export default {
 
       let fromSq
       let toSq
-      for (let i = 0; i < this.legalMoves.length; i++) {
+      const moves = this.playableMoves
+      for (let i = 0; i < moves.length; i++) {
         // don't include dropping moves
-        if (this.legalMoves[i].length !== 3) {
-          const Move = this.legalMoves[i]
+        if (moves[i].length !== 3) {
+          const Move = moves[i]
           fromSq = Move.substring(0, 2)
           toSq = Move.substring(2, 4)
           if (this.dimensionNumber === 3) {
@@ -732,17 +835,44 @@ export default {
       return dests
     },
     isPromotion (uciMove) {
-      for (let i = 0; i < this.legalMoves.length; i++) {
+      const moves = this.playableMoves
+      for (let i = 0; i < moves.length; i++) {
         if (this.dimensionNumber === 3) {
           return false
         }
-        if (this.legalMoves[i].length === 5) {
-          if (this.legalMoves[i].includes(uciMove)) {
+        if (moves[i].length === 5) {
+          if (moves[i].includes(uciMove)) {
             return true
           }
         }
       }
       return false
+    },
+    /* ---- Spell Chess: picking up a potion, aiming it, putting it back ---- */
+    armCast (spell) {
+      if (!this.canCast) return
+      const cast = this.$store.getters.pendingCast
+      // Clicking the potion you are already holding puts it back down.
+      if (cast && cast.spell === spell) {
+        this.$store.commit('pendingCast', null)
+      } else {
+        this.$store.commit('pendingCast', { spell, gate: -1 })
+      }
+      this.updateBoard()
+    },
+    pickGate (gate) {
+      const cast = this.$store.getters.pendingCast
+      if (!cast) return
+      this.$store.commit('pendingCast', { spell: cast.spell, gate })
+      this.updateBoard()
+    },
+    cancelCast () {
+      if (!this.$store.getters.pendingCast) return
+      this.$store.commit('pendingCast', null)
+      this.updateBoard()
+    },
+    onKeydown (event) {
+      if (event.key === 'Escape') this.cancelCast()
     },
     setPromotionOptions (uciMove) {
       if (this.$store.getters.isInternational) {
@@ -847,6 +977,11 @@ export default {
             this.showPromotionModal()
           }
         } else {
+          const cast = this.castInHand
+          if (cast) {
+            uciMove = formatMove(cast.spell, cast.gate, uciMove)
+            this.$store.commit('pendingCast', null)
+          }
           this.lastMoveSan = this.$store.getters.sanMove(uciMove)
           const prevMov = this.currentMove
           this.$store.dispatch('push', { move: uciMove, prev: prevMov })
@@ -911,7 +1046,9 @@ export default {
       if (this.currentMove === undefined || this.moves.length === 0) {
         this.board.state.lastMove = undefined
       } else {
-        const string = String(this.currentMove.uci)
+        // A spell move looks like `f@g4,e7g5`; the squares to light up are the
+        // ones the piece actually travelled between.
+        const string = String(this.currentMove.uci).split(',').pop()
         let first = string.substring(0, 2)
         let second = string.substring(2, 4)
         if (this.dimensionNumber === 3) {
@@ -927,13 +1064,13 @@ export default {
       }
       this.board.set({
         check: isCheck,
-        fen: this.fen,
+        fen: this.boardFen,
         turnColor: this.turn,
         highlight: {
           lastMove: true,
           check: true
         },
-        movable: (this.fen === this.lastFen || this.analysisMode)
+        movable: (this.fen === this.lastFen || this.analysisMode) && !this.armedSpell
           ? {
               dests: this.possibleMoves(),
               color: this.turn
@@ -999,6 +1136,70 @@ export default {
   display: grid;
   grid-template-columns: auto 1fr
 }
+/* Floats over the top of the board. Kept small and translucent on purpose: it
+   has to be readable while the player is scanning ranks underneath it. */
+.cast-hint {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  padding: 3px 5px 3px 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--main-text-color);
+  background: color-mix(in srgb, var(--spell-slot-bg) 88%, transparent);
+  backdrop-filter: blur(3px);
+  border: 1px solid var(--spell-slot-border);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px var(--spell-slot-shadow);
+}
+
+.cast-hint--freeze { border-color: var(--spell-freeze); }
+.cast-hint--jump { border-color: var(--spell-jump); }
+
+.cast-hint__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cast-hint__cancel {
+  padding: 1px 6px;
+  font: inherit;
+  font-size: 10px;
+  color: var(--spell-muted-text);
+  background: var(--spell-panel-bg);
+  border: 1px solid var(--spell-slot-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.cast-hint__cancel:hover {
+  color: var(--main-text-color);
+  border-color: var(--main-text-color);
+}
+
+.cast-hint-enter-active,
+.cast-hint-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.cast-hint-enter,
+.cast-hint-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -6px);
+}
+
+.spell-hands-panel {
+  width: 140px;
+  height: 100%;
+}
+
 .pockets {
   margin-right: 1.5px;
   height: 100%;
