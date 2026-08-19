@@ -1,7 +1,7 @@
 <template>
   <div
     class="spell-hands"
-    :class="{ mirror: orientation === 'black' }"
+    :class="{ 'spell-hands--flipped': orientation === 'black' }"
   >
     <section
       v-for="hand in hands"
@@ -165,7 +165,10 @@ export default {
   box-sizing: border-box;
 }
 
-.spell-hands.mirror {
+/* Deliberately not called `mirror`: ChessGround owns a `.mirror` rule that flips
+   the crazyhouse pocket with scaleY(-1), which would stand this panel on its
+   head. Here the two hands only need to swap ends. */
+.spell-hands--flipped {
   flex-direction: column-reverse;
 }
 
