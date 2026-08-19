@@ -24,7 +24,7 @@
       @click="updateBoard(move)"
       @contextmenu.prevent="(menuAtMove === move.name || displayMenu) ? $refs.menu.open($event, { name: move.name }) : dummy"
     >
-      {{ checkCheckmate }}
+      <SpellMoveToken :text="checkCheckmate" />
     </span>
     <span
       v-if="move.comment && printRoot"
@@ -107,7 +107,8 @@
 
 <script>
 
-import ffish from 'ffish'
+import { createBoard } from '../spell'
+import SpellMoveToken from './SpellMoveToken'
 import VueContext from 'vue-context/src/js/index'
 import AddCommentModal from './AddCommentModal'
 
@@ -115,7 +116,8 @@ export default {
   name: 'MoveHistoryNode',
   components: {
     VueContext,
-    AddCommentModal
+    AddCommentModal,
+    SpellMoveToken
   },
   props: {
     move: {
@@ -193,7 +195,7 @@ export default {
     checkCheckmate () {
       let name = this.move.name
       const variant = this.$store.getters.variant
-      const board = new ffish.Board(variant, this.move.fen)
+      const board = createBoard(variant, this.move.fen)
       const legalMoves = board.legalMoves()
       if (legalMoves.length === 0 && !name.includes('#') && this.move.prev && this.move.prev.prev && this.move.prev.prev.name.includes('+')) {
         name = this.move.name + '#'

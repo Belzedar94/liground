@@ -59,7 +59,7 @@
               @mouseenter="isMoveToken(entry) && setPreview(id, idx, line.pv.split(' '), $event)"
               @click="isMoveToken(entry) && setBoard(id, idx, line.pv.split(' '))"
             >
-              {{ entry }}
+              <SpellMoveToken :text="entry" />
             </span>
           </span>
         </div>
@@ -110,12 +110,13 @@
 <script>
 import { mapGetters } from 'vuex'
 import VueContext from 'vue-context/src/js/index'
-import ffish from 'ffish'
+import { createBoard } from '../spell'
+import SpellMoveToken from './SpellMoveToken'
 import { Chessground } from 'chessgroundx'
 
 export default {
   components: {
-    VueContext
+    VueContext, SpellMoveToken
   },
   data () {
     return {
@@ -266,8 +267,8 @@ export default {
     },
     computePreviewFen (baseFen, pvUciMoves, plyCount) {
       const b = this.is960
-        ? new ffish.Board(this.variant, baseFen, true)
-        : new ffish.Board(this.variant, baseFen)
+        ? createBoard(this.variant, baseFen, true)
+        : createBoard(this.variant, baseFen)
 
       for (let i = 0; i < plyCount; i++) {
         b.push(pvUciMoves[i])
@@ -433,6 +434,11 @@ export default {
 }
 .pv-entry.is-move-token:hover {
   font-weight: bold;
+}
+/* Each token is its own element, so the gap has to be explicit rather than
+   inherited from template whitespace the compiler is free to collapse. */
+.pv-entry + .pv-entry {
+  margin-left: 0.35em;
 }
 .pv-preview {
   display: inline-block;
