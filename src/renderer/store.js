@@ -1,6 +1,16 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 import ffish from 'ffish'
+import {
+  createBoard,
+  isSpellVariant,
+  validateFen as validateVariantFen,
+  SPELL_VARIANT,
+  parseFen as parseSpellFen,
+  activeZones as spellActiveZones,
+  movesUnderCast as spellMovesUnderCast,
+  legalGates as spellLegalGates
+} from './spell'
 import { engine, Engine } from './engine'
 import allEngines from './store/engines'
 
@@ -276,7 +286,8 @@ export const store = new Vuex.Store({
       Shogi: 'shogi',
       Janggi: 'janggi',
       Xiangqi: 'xiangqi',
-      Fischerandom: 'fischerandom'
+      Fischerandom: 'fischerandom',
+      'Spell Chess': SPELL_VARIANT
 
     }),
     openedPGN: false,
@@ -340,7 +351,7 @@ export const store = new Vuex.Store({
     muteButton: false,
     fenply: 1,
     internationalVariants: [
-      '+ Add Custom', 'chess', 'crazyhouse', 'horde', 'kingofthehill', '3check', 'racingkings', 'antichess', 'atomic', 'fischerandom'
+      '+ Add Custom', 'chess', 'crazyhouse', 'horde', 'kingofthehill', '3check', 'racingkings', 'antichess', 'atomic', 'fischerandom', SPELL_VARIANT
     ],
     seaVariants: [
       '+ Add Custom', 'makruk'
@@ -354,6 +365,9 @@ export const store = new Vuex.Store({
     shogiVariants: [
       '+ Add Custom', 'shogi'
     ],
+    // Spell Chess: the potion the player has picked up but not yet committed.
+    // `{ spell, gate }` with gate === -1 while they are still choosing a target.
+    pendingCast: null,
     clock: null
   },
   mutations: { // sync
@@ -400,6 +414,9 @@ export const store = new Vuex.Store({
         this.commit('deleteFromMoves', payload.next[index])
       }
       state.moves.splice(state.moves.indexOf(payload), 1)
+    },
+    pendingCast (state, payload) {
+      state.pendingCast = payload
     },
     legalMoves (state, payload) {
       state.legalMoves = payload
@@ -576,18 +593,11 @@ export const store = new Vuex.Store({
     newBoard (state, payload) {
       const { fen, is960 } = payload || {}
       if (typeof fen === 'string') {
-        if (is960) {
-          state.board = new ffish.Board(state.variant, fen, true)
-        } else {
-          state.board = new ffish.Board(state.variant, fen)
-        }
+        state.board = createBoard(state.variant, fen, is960)
+      } else if (is960) {
+        state.board = createBoard(state.variant, state.curVar960Fen, true)
       } else {
-        if (is960) {
-          console.log(state.curVar960Fen)
-          state.board = new ffish.Board(state.variant, state.curVar960Fen, true)
-        } else {
-          state.board = new ffish.Board(state.variant)
-        }
+        state.board = createBoard(state.variant)
       }
       state.moves = []
       state.mainFirstMove = null
@@ -866,6 +876,9 @@ export const store = new Vuex.Store({
       context.commit('initialized', true)
     },
     updateBoard (context) {
+      // Any position change abandons a half-composed cast: the potion the player
+      // was aiming belongs to a turn that has now gone.
+      if (context.state.pendingCast) context.commit('pendingCast', null)
       const { board } = context.state
       board.setFen(context.state.fen)
       context.commit('turn', board.turn())
@@ -1398,7 +1411,7 @@ export const store = new Vuex.Store({
       }
     },
     fenField (context, payload) {
-      if (ffish.validateFen(payload, context.getters.variant) === 1) { // this doesnt work properly for horde and racing kings
+      if (validateVariantFen(payload, context.getters.variant) === 1) { // this doesnt work properly for horde and racing kings
         if (context.state.fen !== payload) {
           context.commit('fen', payload)
           context.dispatch('updateBoard')
@@ -2086,7 +2099,7 @@ export const store = new Vuex.Store({
       // if the SAN in the pgn is the same than the SAN in states.moves
       // and we are at the last move, return pgn result
       if (state.selectedGame) {
-        const pgnBoard = new ffish.Board(state.variant, state.startFen)
+        const pgnBoard = createBoard(state.variant, state.startFen)
 
         const pgnMoves = state.selectedGame.mainlineMoves()
         const san = pgnBoard.variationSan(pgnMoves, ffish.Notation.SAN, false)
@@ -2183,6 +2196,41 @@ export const store = new Vuex.Store({
     },
     legalMoves (state) {
       return state.legalMoves
+    },
+    isSpellChess (state) {
+      return isSpellVariant(state.variant)
+    },
+    /** Parsed Spell Chess position, or null outside the variant. */
+    spellState (state) {
+      return isSpellVariant(state.variant) ? parseSpellFen(state.fen) : null
+    },
+    /** Zones currently painted on the board. */
+    spellZones (state, getters) {
+      return getters.spellState ? spellActiveZones(getters.spellState) : []
+    },
+    pendingCast (state) {
+      return state.pendingCast
+    },
+    /**
+     * Board moves offered to the player right now, in plain `e2e4` form. With a
+     * potion armed and a target chosen these are the moves that survive the
+     * cast, which is exactly what makes the two-step interaction honest: the
+     * board greys out the pieces your own freeze is about to lock.
+     */
+    spellBaseMoves (state, getters) {
+      const position = getters.spellState
+      if (!position) return []
+      const cast = state.pendingCast
+      if (cast && cast.gate >= 0) return spellMovesUnderCast(position, cast.spell, cast.gate)
+      return spellMovesUnderCast(position, null, -1)
+    },
+    /** Squares the armed potion may legally target. */
+    spellGateTargets (state, getters) {
+      const position = getters.spellState
+      const cast = state.pendingCast
+      if (!position || !cast) return []
+      return spellLegalGates(position, cast.spell)
+        .filter(gate => spellMovesUnderCast(position, cast.spell, gate).length > 0)
     },
     pocket (state) {
       return (turn) => state.board.pocket(turn)

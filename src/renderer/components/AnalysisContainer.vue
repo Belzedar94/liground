@@ -127,6 +127,7 @@ import MoveHistoryNode from './MoveHistoryNode'
 import RoundedSwitch from './RoundedSwitch'
 import EngineSelect from './EngineSelect'
 import ffish from 'ffish'
+import { createBoard } from '../spell'
 
 export default {
   name: 'AnalysisContainer',
@@ -189,7 +190,7 @@ export default {
       if (this.$store.state.selectedGame) {
         let pgnBoard
         if (this.$store.state.selectedGame.headers('FEN')) {
-          pgnBoard = new ffish.Board(this.$store.state.variant, this.$store.state.selectedGame.headers('FEN'))
+          pgnBoard = createBoard(this.$store.state.variant, this.$store.state.selectedGame.headers('FEN'))
         } else {
           pgnBoard = this.$store.state.board
         }

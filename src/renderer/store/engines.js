@@ -2,6 +2,7 @@ import path from 'path'
 import logoStockfish from '../assets/images/engines/stockfish.png'
 import logoStockfishBlue from '../assets/images/engines/stockfish_blue.png'
 import logoStockfishPurple from '../assets/images/engines/fairy_stockfish.jpg'
+import logoSpellStockfish from '../assets/images/engines/spell-stockfish.svg'
 
 const enginePath = path.resolve(
   process.env.NODE_ENV === 'development' ? path.resolve(__dirname, '../../../') : process.resourcesPath,
@@ -51,6 +52,17 @@ export default {
       'placement',
       'slippedgrid',
       'twokingssymmetric'
+    ]
+  },
+  // Spell-Stockfish is not bundled: grab a build from
+  // https://github.com/Belzedar94/Spell-Stockfish/releases and either drop it in
+  // the engines folder under this name or point an engine entry at it.
+  'Spell-Stockfish': {
+    binary: resolveBinary('spell-stockfish'),
+    cwd: enginePath,
+    logo: logoSpellStockfish,
+    variants: [
+      'spell-chess'
     ]
   },
   'Fairy Stockfish 14': {
