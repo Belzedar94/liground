@@ -414,6 +414,26 @@ function generateBaseMoves (state, preZones, castZone) {
     return enemyAttacks
   }
 
+  /**
+   * En passant is the one capture the engine drops while the king is in check —
+   * unless the pawn that just double-pushed is itself the piece giving check,
+   * which is the classic Stockfish evasion carve-out. Freezing the checker with
+   * this turn's cast counts, since that attack map is the post-cast one.
+   */
+  let epVerdict = null
+  const epAllowed = () => {
+    if (epVerdict !== null) return epVerdict
+    const king = findKing(state, us)
+    if (king < 0 || state.ep < 0) return (epVerdict = true)
+    if (!enemyAttackMap()[king]) return (epVerdict = true)
+    const victim = us === 'w' ? state.ep - 8 : state.ep + 8
+    // Silence the victim pawn and see whether anything still checks us.
+    const silenced = disarmed.slice()
+    silenced[victim] = 1
+    epVerdict = !attackMap(state, them, silenced, transparent, victim)[king]
+    return epVerdict
+  }
+
   for (let from = 0; from < 64; from++) {
     const piece = board[from]
     if (!piece || colorOf(piece) !== us || frozen[from]) continue
@@ -461,6 +481,7 @@ function generateBaseMoves (state, preZones, castZone) {
         const occupant = board[to]
         const isCapture = occupant && colorOf(occupant) !== us
         const isEp = to === state.ep && !occupant
+        if (isEp && !epAllowed()) continue
         if (isCapture || isEp) {
           if (cr === promoRank) {
             for (const p of ['q', 'r', 'b', 'n']) pushMove(out, from, to, p)
