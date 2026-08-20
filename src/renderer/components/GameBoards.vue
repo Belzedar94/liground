@@ -410,7 +410,11 @@ export default {
 <style scoped>
 .main-grid {
   display: grid;
-  grid-template-columns: minmax(45%, 1fr) minmax(30%, 1fr);
+  /* The board is a fixed number of pixels wide, and the Spell hands sit beside
+     it, so a percentage split hands the left column less than it needs at
+     medium widths and the board spills under the analysis column. Size the
+     left column to its contents and let the analysis column take the rest. */
+  grid-template-columns: auto minmax(320px, 1fr);
   grid-template-rows: auto auto auto;
   column-gap: 28px;
   padding-right: 12px;
