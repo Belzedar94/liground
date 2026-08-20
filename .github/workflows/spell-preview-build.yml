@@ -1,0 +1,112 @@
+name: Spell preview build
+
+# Packages the Spell Chess branch for Windows, Linux and macOS, then attaches
+# the results to a prerelease so they can be downloaded without a toolchain.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to publish the preview under
+        required: false
+        default: spell-chess-preview-1
+  push:
+    branches:
+      - spell-chess
+
+env:
+  PREVIEW_TAG: ${{ github.event.inputs.tag || 'spell-chess-preview-1' }}
+
+jobs:
+  build:
+    name: Package for ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    # macOS is a bonus target. A failure there must not hold back the two
+    # platforms the preview is actually promised on.
+    continue-on-error: ${{ matrix.optional }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+            optional: false
+          - os: ubuntu-latest
+            label: Linux
+            optional: false
+          - os: macos-latest
+            label: macOS
+            optional: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      # `npm ci` cannot resolve this dependency tree. The legacy resolver can.
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      # postinstall pulls engine binaries for local development. They are not
+      # part of the download, so clear them before the packager copies the
+      # folder into the app resources.
+      - name: Keep engine binaries out of the package
+        shell: bash
+        run: |
+          find engines -mindepth 1 ! -name .gitkeep -delete
+          ls -la engines
+
+      - name: Build the desktop package
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npm run build -- --publish never
+
+      - name: List what was produced
+        shell: bash
+        run: ls -la build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: liground-spell-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            build/*.exe
+            build/*.AppImage
+            build/*.zip
+
+  release:
+    name: Publish the preview
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Gather the assets and checksum them
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name '*.exe' -o -name '*.AppImage' -o -name '*.zip' \) \
+            -exec cp {} release/ \;
+          cd release
+          sha256sum * > SHA256SUMS.txt
+          ls -la
+          cat SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.PREVIEW_TAG }}
+          target_commitish: ${{ github.sha }}
+          name: LiGround Spell Chess preview
+          body_path: .github/spell-preview-release-notes.md
+          prerelease: true
+          files: release/*
