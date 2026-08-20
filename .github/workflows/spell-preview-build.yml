@@ -81,6 +81,12 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run build -- --publish never
 
+      # A package that carries a path from the machine that built it works for
+      # nobody else, so refuse to publish one.
+      - name: Check the package for build machine paths
+        shell: bash
+        run: node tools/check-package-paths.mjs
+
       - name: List what was produced
         shell: bash
         run: ls -la build
