@@ -40,7 +40,9 @@ No engine binaries ship inside these packages. Analysis of Spell Chess needs Spe
 3. Start LiGround, open **Settings**, then **Engine**, then press **+** and point the entry at the binary. Set the working directory of that entry to the folder holding the network, since that is where the engine looks.
 4. Choose `spell-chess` in the variant selector, then select the engine you just added.
 
-An entry named `Spell-Stockfish` is listed out of the box. It looks for `spell-stockfish.exe` on Windows, or `spell-stockfish` elsewhere, inside the `engines` folder of the installed application, and it already points its working directory at that same folder. For the Windows installer that folder is `resources\engines` under the installation directory, so copying the binary in under that name, next to `v2run1.nnue`, makes the entry work with nothing else to set. The portable build and the AppImage unpack themselves to a temporary folder on every run, so on those two add the engine by hand as described above.
+An entry named `Spell-Stockfish` is listed out of the box, so there is a shorter route for the Windows installer. That entry looks for `spell-stockfish.exe` inside an `engines` folder next to the installed application, and it already points its working directory at the same place. Create `resources\engines` under the installation directory, since no such folder ships with the package, then put the binary in it renamed to `spell-stockfish.exe`, next to `v2run1.nnue`. The entry then works with nothing else to set.
+
+The portable build and the AppImage unpack themselves to a fresh temporary folder on every run, so there is nowhere durable to put a binary. On those two, add the engine by hand as described above.
 
 ## What is in this preview
 

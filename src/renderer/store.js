@@ -853,14 +853,23 @@ export const store = new Vuex.Store({
       }
       if (localStorage.engines) {
         try {
-          context.state.allEngines = JSON.parse(localStorage.engines)
+          // Merge rather than replace. A saved list is a snapshot of the
+          // engines this build shipped with when the profile was written, so
+          // replacing wholesale hides every entry added since, and an upgrade
+          // looks like the new engine was never there.
+          context.state.allEngines = { ...context.state.allEngines, ...JSON.parse(localStorage.engines) }
         } catch (err) {
           localStorage.removeItem('engines')
         }
       }
       context.commit('newBoard')
       context.dispatch('updateBoard')
-      context.dispatch('changeEngine', context.getters.availableEngines[0].name)
+      // No binary present anywhere is a normal first run, since none ship with
+      // the app, and it must not take the rest of the startup down with it.
+      const firstEngine = context.getters.availableEngines[0]
+      if (firstEngine) {
+        context.dispatch('changeEngine', firstEngine.name)
+      }
       context.commit('initialized', true)
     },
     updateBoard (context) {
