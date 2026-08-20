@@ -35,12 +35,12 @@ xattr -cr /Applications/liground.app
 
 No engine binaries ship inside these packages. Analysis of Spell Chess needs Spell-Stockfish 2.0:
 
-1. Download the build for your platform from the [Spell-Stockfish 2.0 release](https://github.com/Belzedar94/Spell-Stockfish/releases/tag/v2.0). Windows has an avx2 and a bmi2 build, and there are builds for Linux and for macOS on Apple silicon.
-2. Keep the neural network file next to the binary. The engine looks for the network beside its own executable.
-3. Start LiGround, open **Settings**, then **Engine**, then press **+** and point the entry at the binary. Set the working directory of that entry to the folder holding the network file.
+1. Download the build for your platform, plus `Spell_v2.nnue`, from the [Spell-Stockfish 2.0 release](https://github.com/Belzedar94/Spell-Stockfish/releases/tag/v2.0). Windows has an avx2 and a bmi2 build, and there are builds for Linux and for macOS on Apple silicon.
+2. Put the binary and the network in the same folder, and rename the network to `v2run1.nnue`. That is the name the engine looks for on its own, and without a network it refuses to evaluate anything. Keeping the name `Spell_v2.nnue` also works, but then the `EvalFile` option has to be set to that name by hand, in the engine settings table.
+3. Start LiGround, open **Settings**, then **Engine**, then press **+** and point the entry at the binary. Set the working directory of that entry to the folder holding the network, since that is where the engine looks.
 4. Choose `spell-chess` in the variant selector, then select the engine you just added.
 
-An entry named `Spell-Stockfish` is listed out of the box. It looks for `spell-stockfish.exe` on Windows, or `spell-stockfish` elsewhere, inside the `engines` folder of the installed application. For the Windows installer that folder is `resources\engines` under the installation directory, so copying the binary and its network there makes that entry work with no further setup. The portable build and the AppImage unpack themselves to a temporary folder on every run, so on those two add the engine by hand as described above.
+An entry named `Spell-Stockfish` is listed out of the box. It looks for `spell-stockfish.exe` on Windows, or `spell-stockfish` elsewhere, inside the `engines` folder of the installed application, and it already points its working directory at that same folder. For the Windows installer that folder is `resources\engines` under the installation directory, so copying the binary in under that name, next to `v2run1.nnue`, makes the entry work with nothing else to set. The portable build and the AppImage unpack themselves to a temporary folder on every run, so on those two add the engine by hand as described above.
 
 ## What is in this preview
 

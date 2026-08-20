@@ -17,6 +17,12 @@ on:
 env:
   PREVIEW_TAG: ${{ github.event.inputs.tag || 'spell-chess-preview-1' }}
 
+# Two runs publishing to the same tag would race each other, so the newer one
+# wins and the older one is dropped.
+concurrency:
+  group: spell-preview-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Package for ${{ matrix.label }}
