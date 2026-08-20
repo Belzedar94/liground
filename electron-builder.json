@@ -39,17 +39,31 @@
   },
   "mac": {
     "icon": "build/icons/icon.icns",
-    "target": ["zip"]
+    "target": ["zip"],
+    "artifactName": "LiGround-Spell-${version}-mac-${arch}.${ext}"
   },
   "win": {
-    "icon": "build/icons/icon.ico"
+    "icon": "build/icons/icon.ico",
+    "target": ["nsis", "portable"]
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "artifactName": "LiGround-Spell-${version}-win-setup.${ext}"
+  },
+  "portable": {
+    "artifactName": "LiGround-Spell-${version}-win-portable.${ext}"
   },
   "linux": {
-    "icon": "build/icons"
+    "icon": "build/icons",
+    "target": ["AppImage"],
+    "category": "Game"
   },
   "appImage": {
     "executableArgs": [
       "--no-sandbox"
-    ]
+    ],
+    "artifactName": "LiGround-Spell-${version}-linux-${arch}.${ext}"
   }
 }
