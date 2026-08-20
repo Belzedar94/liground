@@ -55,6 +55,7 @@
                 v-model="settings[option.name]"
                 size="1"
                 class="input"
+                @change="updateSettings"
               >
                 <option
                   v-for="selOption in option.var"
@@ -73,6 +74,7 @@
                 type="checkbox"
                 :name="option.name"
                 class="input"
+                @change="updateSettings"
               >
             </td>
           </template>
@@ -85,6 +87,7 @@
                 :min="option.min"
                 :max="option.max"
                 class="input"
+                @change="updateSettings"
               >
             </td>
           </template>
@@ -95,6 +98,7 @@
                 type="text"
                 :name="option.name"
                 class="input"
+                @change="updateSettings"
               >
             </td>
           </template>
@@ -198,9 +202,19 @@ export default {
     updateSettings () {
       const changed = {}
       for (const [name, value] of Object.entries(this.settings)) {
+        // An emptied number field reads back as '', which the engine would
+        // receive as an option with no value at all.
+        if (value === '' && typeof this.engineSettings[name] === 'number') {
+          continue
+        }
         if (value !== this.engineSettings[name]) {
           changed[name] = value
         }
+      }
+      // Applying options restarts the engine, so do not do it for a value the
+      // user re-picked without changing.
+      if (Object.keys(changed).length === 0) {
+        return
       }
       this.$store.dispatch('setEngineOptions', changed)
     },
