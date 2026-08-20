@@ -30,6 +30,11 @@ if (isPackagedLinux) {
   app.commandLine.appendSwitch('no-sandbox')
 }
 
+// Some GPU driver and compositor combinations never hand Electron a surface to
+// draw on, and the window then stays blank forever. An analysis GUI has nothing
+// to gain from the GPU, so take the reliable path everywhere.
+app.disableHardwareAcceleration()
+
 function createWindow () {
   /**
    * Initial window options
