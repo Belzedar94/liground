@@ -28,7 +28,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          # Not windows-latest. That image ships Visual Studio 2026, and the
+          # node-gyp behind electron-rebuild cannot recognise it, so the native
+          # rebuild of better-sqlite3 dies before anything is packaged.
+          - os: windows-2022
             label: Windows
             optional: false
           - os: ubuntu-latest
@@ -47,7 +50,14 @@ jobs:
           cache: npm
 
       # `npm ci` cannot resolve this dependency tree. The legacy resolver can.
+      #
+      # The skip flag matters on macOS: @vue/devtools drags in Electron 7,
+      # which was never built for Apple silicon, and its installer answers a
+      # 404 by failing the whole install. Nothing here needs the binaries npm
+      # would fetch, because electron-builder downloads its own copy.
       - name: Install dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
         run: npm install --legacy-peer-deps
 
       # postinstall pulls engine binaries for local development. They are not

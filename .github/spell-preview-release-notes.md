@@ -13,7 +13,7 @@ A zone lives for your move and the single reply to it, then expires. Casting sta
 | --- | --- |
 | Windows installer | `LiGround-Spell-0.6.0-win-setup.exe` |
 | Windows portable | `LiGround-Spell-0.6.0-win-portable.exe` |
-| Linux | `LiGround-Spell-0.6.0-linux-x64.AppImage` |
+| Linux | `LiGround-Spell-0.6.0-linux-x86_64.AppImage` |
 | macOS, Apple silicon | `LiGround-Spell-0.6.0-mac-arm64.zip` |
 
 `SHA256SUMS.txt` carries the checksum of every file listed above.
@@ -21,8 +21,8 @@ A zone lives for your move and the single reply to it, then expires. Casting sta
 On Linux, mark the AppImage executable before running it:
 
 ```
-chmod +x LiGround-Spell-0.6.0-linux-x64.AppImage
-./LiGround-Spell-0.6.0-linux-x64.AppImage
+chmod +x LiGround-Spell-0.6.0-linux-x86_64.AppImage
+./LiGround-Spell-0.6.0-linux-x86_64.AppImage
 ```
 
 The builds are unsigned on every platform. Windows SmartScreen shows a warning on first launch, and *More info* then *Run anyway* gets past it. On macOS, Gatekeeper refuses an unsigned app outright, so clear the quarantine flag after unzipping:
