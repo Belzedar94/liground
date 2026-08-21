@@ -414,7 +414,7 @@ export default {
      it, so a percentage split hands the left column less than it needs at
      medium widths and the board spills under the analysis column. Size the
      left column to its contents and let the analysis column take the rest. */
-  grid-template-columns: auto minmax(320px, 1fr);
+  grid-template-columns: auto minmax(490px, 1fr);
   grid-template-rows: auto auto auto;
   column-gap: 28px;
   padding-right: 12px;
@@ -481,6 +481,17 @@ input {
   grid-area: fenfield;
   /*margin-left: 48px;*/
   margin-top: 12px;
+  /* A spell FEN is long, and the input is sized by character count, so without
+     this the field alone decides how wide the left column has to be. */
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#fen-field #lname {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
 }
 #fen-field-qt {
   grid-area: fenfield;
@@ -565,7 +576,12 @@ input {
 #evalplot {
   grid-area: evalplot;
   width: 100%;
-  max-width: none;
+  /* The chart reports a wide intrinsic size, and as a grid item that becomes a
+     floor under the whole left column, wide enough to push the analysis column
+     off the screen. Let it be squeezed instead. */
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   margin-top: 12px;
   margin-left: 12px;
 }

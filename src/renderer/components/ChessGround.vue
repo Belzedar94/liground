@@ -334,12 +334,14 @@ export default {
     dimensionNumber () {
       const boardSize = document.querySelector('.cg-wrap')
       switch (this.dimensionNumber) {
-        case 0:
-          boardSize.style.width = 600 + this.enlarged + 'px'
-          boardSize.style.height = 600 + this.enlarged + 'px'
+        case 0: {
+          const size = this.fittedBoardSize(600 + this.enlarged)
+          boardSize.style.width = size + 'px'
+          boardSize.style.height = size + 'px'
           this.startingPoint = this.enlarged
           document.body.dispatchEvent(new Event('chessground.resize'))
           break
+        }
         case 1:
           boardSize.style.width = 520 + this.enlarged9x9width + 'px'
           boardSize.style.height = 600 + this.enlarged9x9height + 'px'
@@ -557,14 +559,17 @@ export default {
     document.body.dispatchEvent(new Event('chessground.resize'))
     const boardSize = document.querySelector('.cg-wrap')
     if (Number(localStorage.dimNumber) === 0) {
-      boardSize.style.width = 600 + this.enlarged + 'px'
-      boardSize.style.height = 600 + this.enlarged + 'px'
+      const size = this.fittedBoardSize(600 + this.enlarged)
+      boardSize.style.width = size + 'px'
+      boardSize.style.height = size + 'px'
       this.startingPoint = this.enlarged
     }
     document.body.dispatchEvent(new Event('chessground.resize'))
+    window.addEventListener('resize', this.onWindowResize)
   },
   beforeDestroy () {
     window.removeEventListener('keydown', this.onKeydown)
+    window.removeEventListener('resize', this.onWindowResize)
   },
   methods: {
     closeCursorHand () {
@@ -577,6 +582,44 @@ export default {
     },
     reRender (event) {
       document.body.dispatchEvent(new Event('chessground.resize'))
+    },
+    /**
+     * The board is sized in pixels, so on a window that cannot hold it the
+     * board wins and the analysis column is pushed off the right edge. Clamp
+     * the requested size to what is actually free beside it, and to the height
+     * as well, so the whole layout stays reachable without scrolling.
+     */
+    fittedBoardSize (desired) {
+      const wrap = document.querySelector('.cg-wrap')
+      if (!wrap) {
+        return desired
+      }
+      // Whatever else shares the board row: the hands, the eval bar, the gaps.
+      const row = document.querySelector('.board-grid')
+      const chrome = row
+        ? Math.max(0, Math.round(row.getBoundingClientRect().width - wrap.getBoundingClientRect().width))
+        : 150
+      // The analysis column floor, its gap and the padding either side of it.
+      const availableWidth = window.innerWidth - chrome - 540
+      // The menu bar above, and the FEN field and jump buttons below.
+      const availableHeight = window.innerHeight - 190
+      return Math.max(320, Math.min(desired, availableWidth, availableHeight))
+    },
+    /** Apply the fitted size to the 8x8 board and let chessground re-measure. */
+    applyBoardSize () {
+      const boardSize = document.querySelector('.cg-wrap')
+      if (!boardSize || this.dimensionNumber !== 0) {
+        return
+      }
+      const size = this.fittedBoardSize(600 + this.enlarged)
+      boardSize.style.width = size + 'px'
+      boardSize.style.height = size + 'px'
+      this.boardWidth = boardSize.style.width
+      this.boardHeight = boardSize.style.height
+      document.body.dispatchEvent(new Event('chessground.resize'))
+    },
+    onWindowResize () {
+      this.applyBoardSize()
     },
     hideShade () {
       if (this.dragging === false) {
