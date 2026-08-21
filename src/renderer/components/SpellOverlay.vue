@@ -134,6 +134,27 @@
         />
       </template>
     </g>
+
+    <!-- The cast half of an engine line, on the square it is aimed at. The
+         move half is an ordinary arrow drawn by the board underneath. -->
+    <g
+      v-for="badge in castBadges"
+      :key="badge.key"
+      class="cast-badge"
+      :class="['cast-badge--' + badge.kind, badge.best ? 'cast-badge--best' : '']"
+    >
+      <circle
+        :cx="badge.x"
+        :cy="badge.y"
+        r="27"
+        class="cast-badge__disc"
+      />
+      <text
+        :x="badge.x"
+        :y="badge.y"
+        class="cast-badge__letter"
+      >{{ badge.letter }}</text>
+    </g>
   </svg>
 </template>
 
@@ -172,6 +193,14 @@ export default {
     pending: {
       type: Object,
       default: null
+    },
+    /**
+     * Casts proposed by the engine, one per analysis line, as
+     * `{ spell, gate, rank }` with rank 0 being the line it likes best.
+     */
+    castMarkers: {
+      type: Array,
+      default: () => []
     }
   },
   data () {
@@ -193,6 +222,16 @@ export default {
         out.push(this.shapeFor(this.armed, this.hover, 'preview'))
       }
       return out
+    },
+    castBadges () {
+      return this.castMarkers.map(marker => ({
+        key: `b${marker.gate}${marker.spell}${marker.rank}`,
+        x: this.cx(marker.gate),
+        y: this.cy(marker.gate),
+        kind: marker.spell === SPELL_FREEZE ? 'freeze' : 'jump',
+        letter: marker.spell === SPELL_FREEZE ? 'F' : 'J',
+        best: marker.rank === 0
+      }))
     }
   },
   watch: {
@@ -413,5 +452,34 @@ export default {
   .zone,
   .zone--pending { animation: none; }
   .portal-arc { animation: none; }
+}
+
+/* Cast badge. A letter in a coloured disc, so which potion the engine wants is
+   readable at a glance and never mistaken for a board marking. It is a label,
+   not a target, so it must not swallow clicks meant for the square. */
+.cast-badge {
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.cast-badge--best {
+  opacity: 1;
+}
+
+.cast-badge__disc {
+  stroke: #fff;
+  stroke-width: 3;
+}
+
+.cast-badge--freeze .cast-badge__disc { fill: var(--spell-freeze); }
+.cast-badge--jump .cast-badge__disc { fill: var(--spell-jump); }
+
+.cast-badge__letter {
+  fill: #fff;
+  font-size: 34px;
+  font-weight: 700;
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  text-anchor: middle;
+  dominant-baseline: central;
 }
 </style>

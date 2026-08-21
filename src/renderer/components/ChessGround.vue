@@ -54,6 +54,7 @@
             :armed="armedSpell"
             :targets="spellGateTargets"
             :pending="castInHand"
+            :cast-markers="castMarkers"
             @pick="pickGate"
             @cancel="cancelCast"
           />
@@ -101,7 +102,7 @@ import { Chessground } from 'chessgroundx'
 import SpellHands from './SpellHands'
 import SpellOverlay from './SpellOverlay'
 import SpellPotionIcon from './SpellPotionIcon'
-import { SPELL_INFO, formatMove, squareName } from '../spell/rules'
+import { SPELL_INFO, formatMove, parseMove, squareName } from '../spell/rules'
 import * as cgUtil from 'chessgroundx/util'
 import ChessPocket from './ChessPocket'
 import PromotionModal from './PromotionModal.vue'
@@ -219,6 +220,7 @@ export default {
       board: null,
       shapes: [],
       pieceShapes: [],
+      castMarkers: [],
       promotions: [],
       isPromotionModalVisible: false,
       promotionMove: undefined,
@@ -386,6 +388,7 @@ export default {
       if (this.PvE || this.EvE) {
         this.shapes = []
         this.pieceShapes = []
+        this.castMarkers = []
         this.drawShapes()
         return
       }
@@ -393,6 +396,7 @@ export default {
       const multipv = this.multipv
       const shapes = []
       const pieceShapes = []
+      const castMarkers = []
       for (const [i, pvline] of multipv.entries()) {
         if (pvline && 'ucimove' in pvline && pvline.ucimove.length > 0) {
           const lineWidth = 2 + ((multipv.length - i) / multipv.length) * 8
@@ -405,7 +409,19 @@ export default {
             orig = extract[0].replace('10', ':')
             dest = extract[1].replace('10', ':')
           }
-          if (move.includes('@')) {
+          // A spell move carries a cast and a piece move at once. Both halves
+          // need drawing: the move as the arrow any other line would get, and
+          // the cast as a badge on its gate square.
+          const cast = this.isSpellChess ? parseMove(move) : null
+          if (cast && cast.spell) {
+            drawShape = {
+              orig: cast.move.slice(0, 2),
+              dest: cast.move.slice(2, 4),
+              brush: 'paleBlue',
+              modifiers: { lineWidth }
+            }
+            castMarkers.unshift({ spell: cast.spell, gate: cast.gate, rank: i })
+          } else if (move.includes('@')) {
             const pieceType = move[0].toLowerCase()
             const pieceConv = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' }
             pieceShapes.unshift({
@@ -435,6 +451,7 @@ export default {
       }
       this.pieceShapes = pieceShapes
       this.shapes = shapes
+      this.castMarkers = castMarkers
       this.drawShapes()
     },
     hoveredpv () {

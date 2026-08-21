@@ -44,10 +44,10 @@ export const LIGHT_THEME = {
   '--spell-freeze-ink': '#0d5c80',
   '--spell-freeze-soft': '#d3ecf8',
   '--spell-freeze-glow': 'rgba(31, 141, 190, 0.38)',
-  '--spell-jump': '#7c4ddb',
-  '--spell-jump-ink': '#54309b',
-  '--spell-jump-soft': '#e5dcfb',
-  '--spell-jump-glow': 'rgba(124, 77, 219, 0.38)'
+  '--spell-jump': '#1f9d55',
+  '--spell-jump-ink': '#0c6135',
+  '--spell-jump-soft': '#d5f2e2',
+  '--spell-jump-glow': 'rgba(31, 157, 85, 0.38)'
 }
 
 export const DARK_THEME = {
@@ -85,10 +85,10 @@ export const DARK_THEME = {
   '--spell-freeze-ink': '#bfe9fa',
   '--spell-freeze-soft': '#1d3d4e',
   '--spell-freeze-glow': 'rgba(92, 196, 238, 0.42)',
-  '--spell-jump': '#a78bfa',
-  '--spell-jump-ink': '#ded0ff',
-  '--spell-jump-soft': '#332a52',
-  '--spell-jump-glow': 'rgba(167, 139, 250, 0.42)'
+  '--spell-jump': '#55d98d',
+  '--spell-jump-ink': '#c6f5da',
+  '--spell-jump-soft': '#1c4432',
+  '--spell-jump-glow': 'rgba(85, 217, 141, 0.42)'
 }
 
 /** Write one palette onto the document root. */
