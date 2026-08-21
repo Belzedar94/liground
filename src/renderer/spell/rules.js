@@ -578,11 +578,23 @@ function generateBaseMoves (state, preZones, castZone) {
   return out
 }
 
-/** Squares a spell may legally target: freeze anywhere, jump only on a piece. */
+/**
+ * Squares a spell may legally target: freeze anywhere, jump only on a piece.
+ *
+ * One square is off limits for a freeze: the exact centre of a live enemy
+ * freeze zone. Overlap is fine, only the centre itself is refused, so after
+ * 1.freeze@e6 e4 black has 63 gates and freeze@d6 (6 of the 9 squares shared)
+ * is still one of them. Only the enemy zone can be live when we are choosing a
+ * gate: our own expires during the opponent's reply, one ply before our
+ * cooldown reaches 0.
+ */
 export function legalGates (state, spell) {
+  const enemy = state.turn === 'w' ? 'b' : 'w'
+  const blocked = spell === SPELL_FREEZE ? state.spells[enemy][SPELL_FREEZE].gate : -1
   const gates = []
   for (let i = 0; i < 64; i++) {
     if (spell === SPELL_JUMP && !state.board[i]) continue
+    if (i === blocked) continue
     gates.push(i)
   }
   return gates
