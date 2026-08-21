@@ -790,10 +790,41 @@ export default {
       this.updateHand()
       this.afterMove()
     },
+    /**
+     * A style name saved by an older build may not ship any more. The missing
+     * stylesheet then loads as an empty one rather than raising an error, so
+     * every piece ends up with no image and the board looks empty. Check that
+     * the sheet actually carried rules, and fall back to one that ships.
+     */
+    verifyStyleSheet (selector, applied, fallback, apply) {
+      if (applied === fallback) {
+        return
+      }
+      // Inspecting the stylesheet itself is not dependable: a missing file
+      // loads as an empty sheet, and reading its rules raises a security error
+      // under the dev server. What the styling was for is observable though,
+      // so look at that instead.
+      let attempts = 0
+      const check = () => {
+        const el = document.querySelector(selector)
+        if (!el) {
+          if (attempts++ < 6) setTimeout(check, 300)
+          return
+        }
+        if (getComputedStyle(el).backgroundImage === 'none') {
+          apply(fallback)
+        }
+      }
+      setTimeout(check, 600)
+    },
     updatePieceCSS (pieceStyle) {
       const node = this.pieceStyleEl
       if (this.$store.getters.isInternational) {
         node.href = '../../../../static/piece-css/international/' + pieceStyle + '.css'
+        this.verifyStyleSheet('piece', pieceStyle, 'merida', style => {
+          localStorage.internationalPieceStyle = style
+          this.$store.dispatch('pieceStyle', style)
+        })
       } else if (this.$store.getters.isSEA) {
         node.href = '../../../../static/piece-css/sea/' + pieceStyle + '.css'
       } else if (this.$store.getters.isXiangqi || this.$store.getters.isJanggi) {
@@ -806,6 +837,10 @@ export default {
       const node = this.boardStyleEl
       if (this.$store.getters.isInternational) {
         node.href = '../../../../static/board-css/international/' + boardStyle + '.css'
+        this.verifyStyleSheet('cg-board', boardStyle, 'blue', style => {
+          localStorage.internationalBoardStyle = style
+          this.$store.dispatch('boardStyle', style)
+        })
       } else if (this.$store.getters.isXiangqi || this.$store.getters.isJanggi) {
         node.href = '../../../../static/board-css/xiangqi/' + this.variant + '/' + boardStyle + '.css'
       } else if (this.$store.getters.isSEA) {
